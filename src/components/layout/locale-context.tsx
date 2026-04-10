@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
 import { type Locale, type TranslationKey, translations } from '@/lib/i18n';
 
 interface LocaleContextType {
@@ -9,33 +9,64 @@ interface LocaleContextType {
   t: (key: TranslationKey) => string;
 }
 
+const LOCALE_STORAGE_KEY = 'locale';
+const LOCALE_CHANGE_EVENT = 'job-search:locale-change';
+
 const LocaleContext = createContext<LocaleContextType>({
   locale: 'en',
   setLocale: () => {},
   t: (key) => translations.en[key],
 });
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+function readStoredLocale(): Locale {
+  if (typeof window === 'undefined') {
+    return 'en';
+  }
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as Locale | null;
-    if (saved && (saved === 'en' || saved === 'ko')) {
-      setLocaleState(saved);
+  const savedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+  return savedLocale === 'ko' ? 'ko' : 'en';
+}
+
+function subscribeLocaleStore(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === LOCALE_STORAGE_KEY) {
+      onStoreChange();
     }
-  }, []);
+  };
+  const handleLocaleChange = () => onStoreChange();
 
-  const setLocale = useCallback((l: Locale) => {
-    setLocaleState(l);
-    localStorage.setItem('locale', l);
+  window.addEventListener('storage', handleStorage);
+  window.addEventListener(LOCALE_CHANGE_EVENT, handleLocaleChange);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    window.removeEventListener(LOCALE_CHANGE_EVENT, handleLocaleChange);
+  };
+}
+
+export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const locale = useSyncExternalStore<Locale>(subscribeLocaleStore, readStoredLocale, () => 'en');
+
+  const setLocale = useCallback((nextLocale: Locale) => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+    window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
   }, []);
 
   const t = useCallback((key: TranslationKey) => {
     return translations[locale][key];
   }, [locale]);
 
+  const value = useMemo(
+    () => ({ locale, setLocale, t }),
+    [locale, setLocale, t]
+  );
+
   return (
-    <LocaleContext.Provider value={{ locale, setLocale, t }}>
+    <LocaleContext.Provider value={value}>
       {children}
     </LocaleContext.Provider>
   );

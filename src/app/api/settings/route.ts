@@ -1,30 +1,31 @@
-import { getDb } from '@/lib/db';
+import { getAllSettings, ensureSettingsTable, setSetting, deleteSetting } from '@/lib/settings';
+import { getOpenAICodexStatus } from '@/lib/openai-codex';
 import { NextRequest, NextResponse } from 'next/server';
 
-function ensureSettingsTable() {
-  const db = getDb();
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
-  return db;
-}
-
 export async function GET() {
-  const db = ensureSettingsTable();
-  const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[];
+  ensureSettingsTable();
+  const rows = Object.entries(getAllSettings());
   const settings: Record<string, string> = {};
-  for (const row of rows) {
+  for (const [key, value] of rows) {
+    if (key.startsWith('OPENAI_CODEX_')) {
+      continue;
+    }
+
     // Mask API keys for display
-    if (row.key.includes('API_KEY') || row.key.includes('api_key')) {
-      settings[row.key] = row.value ? `${row.value.substring(0, 8)}...${row.value.substring(row.value.length - 4)}` : '';
-      settings[`${row.key}_set`] = row.value ? 'true' : 'false';
+    if (key.includes('API_KEY') || key.includes('api_key')) {
+      settings[key] = value ? `${value.substring(0, 8)}...${value.substring(value.length - 4)}` : '';
+      settings[`${key}_set`] = value ? 'true' : 'false';
     } else {
-      settings[row.key] = row.value;
+      settings[key] = key === 'AI_PROVIDER' && value === 'openai' ? 'openai-api' : value;
     }
   }
+
+  const codexStatus = getOpenAICodexStatus();
+  settings.OPENAI_CODEX_CONNECTED = codexStatus.connected ? 'true' : 'false';
+  settings.OPENAI_CODEX_EXPIRED = codexStatus.expired ? 'true' : 'false';
+  settings.OPENAI_CODEX_AUTH_MODE = process.env.OPENAI_CODEX_AUTH_MODE || 'web';
+  if (codexStatus.accountId) settings.OPENAI_CODEX_ACCOUNT_ID = codexStatus.accountId;
+  if (codexStatus.expiresAt) settings.OPENAI_CODEX_EXPIRES_AT = codexStatus.expiresAt;
 
   // Also check env vars
   if (process.env.GEMINI_API_KEY) settings['GEMINI_API_KEY_env'] = 'true';
@@ -48,12 +49,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
   }
 
-  const db = ensureSettingsTable();
-
   if (value) {
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
+    if (key === 'AI_PROVIDER' && !['gemini', 'openai-api', 'openai-codex', 'openai', 'auto'].includes(value)) {
+      return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
+    }
+
+    setSetting(key, value);
   } else {
-    db.prepare('DELETE FROM settings WHERE key = ?').run(key);
+    deleteSetting(key);
   }
 
   return NextResponse.json({ success: true });

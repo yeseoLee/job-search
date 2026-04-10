@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db';
-import { generateText } from '@/lib/ai';
+import { generateText, getAiErrorMessage } from '@/lib/ai';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -49,7 +49,7 @@ Be specific with resource recommendations (actual course names, platforms, certi
     return NextResponse.json({ output });
   } catch (error) {
     return NextResponse.json(
-      { error: `Gemini API error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { error: getAiErrorMessage(error) },
       { status: 500 }
     );
   }

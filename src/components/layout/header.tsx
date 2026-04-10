@@ -1,17 +1,19 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Moon, Sun, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useLocale } from './locale-context';
+import { useTheme } from './theme-provider';
+
+function subscribe() {
+  return () => {};
+}
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { locale, setLocale, t } = useLocale();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
   return (
     <header className="flex h-14 items-center justify-end gap-2 border-b px-6">
@@ -29,9 +31,9 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
           >
-            {theme === 'dark' ? (
+            {resolvedTheme === 'dark' ? (
               <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />

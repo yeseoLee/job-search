@@ -105,7 +105,7 @@ export const translations = {
 
     // Assistant
     assistantTitle: 'AI Assistant',
-    assistantDesc: 'Powered by Google Gemini',
+    assistantDesc: 'Powered by Gemini, OpenAI API, or OpenAI Codex',
     coverLetter: 'Cover Letter',
     interview: 'Interview',
     analyzeJob: 'Analyze Job',
@@ -251,7 +251,7 @@ export const translations = {
 
     // Assistant
     assistantTitle: 'AI 어시스턴트',
-    assistantDesc: 'Google Gemini 기반',
+    assistantDesc: 'Gemini, OpenAI API, 또는 OpenAI Codex 기반',
     coverLetter: '자기소개서',
     interview: '면접 준비',
     analyzeJob: '채용 분석',

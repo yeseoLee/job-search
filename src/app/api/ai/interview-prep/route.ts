@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db';
-import { generateText } from '@/lib/ai';
+import { generateText, getAiErrorMessage } from '@/lib/ai';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -43,7 +43,7 @@ Format with clear headers and numbered lists.`;
     return NextResponse.json({ output });
   } catch (error) {
     return NextResponse.json(
-      { error: `Gemini API error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { error: getAiErrorMessage(error) },
       { status: 500 }
     );
   }

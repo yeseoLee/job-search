@@ -50,7 +50,7 @@ JSON 형식으로 반환:
       return true;
     });
 
-    // Step 3: Score each job against resume using Gemini
+    // Step 3: Score each job against resume using the configured AI provider
     const scored: Array<typeof unique[0] & { match_score: number; reason: string }> = [];
 
     // Batch analyze (max 15 to avoid rate limits)

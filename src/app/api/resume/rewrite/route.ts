@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db';
-import { generateText } from '@/lib/ai';
+import { generateText, getAiErrorMessage } from '@/lib/ai';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -67,7 +67,7 @@ Format the resume cleanly with bullet points for achievements.`;
     return NextResponse.json({ rewritten_resume: rewrittenResume });
   } catch (error) {
     return NextResponse.json(
-      { error: `Gemini API error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { error: getAiErrorMessage(error) },
       { status: 500 }
     );
   }
