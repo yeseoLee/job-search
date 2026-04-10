@@ -296,6 +296,7 @@ export default function ResumePage() {
                               <Badge className={`text-[10px] ${
                                 rec.source === '사람인' ? 'bg-blue-500 text-white' :
                                 rec.source === '원티드' ? 'bg-indigo-500 text-white' :
+                                rec.source === '랠릿' ? 'bg-teal-500 text-white' :
                                 rec.source === 'eFinancial' ? 'bg-amber-600 text-white' :
                                 'bg-emerald-500 text-white'
                               }`}>{rec.source}</Badge>

@@ -52,6 +52,7 @@ interface AnalysisData {
 const sourceColors: Record<string, string> = {
   '사람인': 'bg-blue-500 text-white',
   '원티드': 'bg-indigo-500 text-white',
+  '랠릿': 'bg-teal-500 text-white',
   'eFinancial': 'bg-amber-600 text-white',
   'Adzuna': 'bg-emerald-500 text-white',
 };
@@ -261,7 +262,7 @@ export default function SearchPage() {
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold italic">Job Search Engine</h1>
-        <p className="text-sm text-muted-foreground">사람인 · 원티드 · eFinancialCareers · Adzuna</p>
+        <p className="text-sm text-muted-foreground">사람인 · 원티드 · 랠릿 · eFinancialCareers · Adzuna</p>
       </div>
 
       {/* Search */}

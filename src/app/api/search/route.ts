@@ -31,8 +31,124 @@ interface JobResult {
   description: string;
 }
 
+interface RallitStatus {
+  name?: string;
+}
+
+interface RallitRegion {
+  code?: string;
+  name?: string;
+}
+
+interface RallitJob {
+  name?: string;
+}
+
+interface RallitListItem {
+  id: number;
+  title?: string;
+  companyName?: string;
+  addressRegion?: string;
+  status?: RallitStatus;
+  url?: string;
+  jobLevels?: string[];
+  jobSkillKeywords?: string[];
+}
+
+interface RallitDetail {
+  id: number;
+  title?: string;
+  companyName?: string;
+  addressRegion?: string | RallitRegion;
+  addressMain?: string;
+  status?: RallitStatus;
+  endedAt?: string;
+  jobs?: RallitJob[];
+  jobLevels?: string[];
+  minimumSalary?: number | null;
+  maximumSalary?: number | null;
+  responsibilities?: string;
+  content?: string;
+  description?: string;
+}
+
+interface RallitListResponse {
+  data?: {
+    items?: RallitListItem[];
+  };
+}
+
+interface RallitDetailResponse {
+  data?: RallitDetail;
+}
+
+const RALLIT_LIST_PAGE_SIZE = 20;
+const RALLIT_OPEN_ENDED_AT = '9999-12-31';
+const RALLIT_REGION_NAMES: Record<string, string> = {
+  SEOUL: '서울',
+  GANGNAM: '강남',
+  MAPO: '마포',
+  PANGYO: '판교',
+};
+const RALLIT_JOB_LEVEL_LABELS: Record<string, string> = {
+  BEGINNER: '신입',
+  JUNIOR: '주니어',
+  MIDDLE: '미들',
+  SENIOR: '시니어',
+  TOP: '리드',
+};
+
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+}
+
+function dedupeJobs(results: JobResult[]): JobResult[] {
+  const seen = new Set<string>();
+
+  return results.filter((job) => {
+    const key = `${job.source}:${job.id}`;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function createSaraminId(jobUrl: string, index: number): string {
+  const recIdxMatch = jobUrl.match(/rec_idx=(\d+)/);
+  if (recIdxMatch?.[1]) {
+    return `saramin-${recIdxMatch[1]}`;
+  }
+
+  const viewIdMatch = jobUrl.match(/\/view\/([^?&#/]+)/);
+  if (viewIdMatch?.[1]) {
+    return `saramin-${viewIdMatch[1]}`;
+  }
+
+  return `saramin-${index}`;
+}
+
+async function searchKoreanSource(
+  searchFn: (query: string) => Promise<JobResult[]>,
+  englishQuery: string,
+  koreanQuery: string,
+  isKoreanQuery: boolean
+): Promise<JobResult[]> {
+  if (isKoreanQuery || englishQuery === koreanQuery) {
+    return searchFn(koreanQuery);
+  }
+
+  const [englishResults, koreanResults] = await Promise.allSettled([
+    searchFn(englishQuery),
+    searchFn(koreanQuery),
+  ]);
+
+  return dedupeJobs([
+    ...(englishResults.status === 'fulfilled' ? englishResults.value : []),
+    ...(koreanResults.status === 'fulfilled' ? koreanResults.value : []),
+  ]);
 }
 
 // Detect if query contains Korean characters
@@ -47,7 +163,7 @@ async function translateQuery(text: string, targetLang: 'en' | 'ko'): Promise<st
       ? `Translate this Korean job search keyword to a single English search query for job boards.
 Return exactly ONE search query, no alternatives, no commas, no "or".
 Examples: 퀀트 → quant, 데이터 엔지니어 → data engineer, 주식 퀀트 → equity quant`
-      : `Translate this English job search keyword to a single Korean search query for Korean job boards (사람인, 원티드).
+      : `Translate this English job search keyword to a single Korean search query for Korean job boards (사람인, 원티드, 랠릿).
 Return exactly ONE search query, no alternatives, no commas, no "or".
 Use terms that Koreans actually search on job sites.
 Examples: equity quant → 퀀트, data engineer → 데이터 엔지니어, machine learning engineer → 머신러닝 엔지니어, frontend developer → 프론트엔드 개발자`;
@@ -64,6 +180,151 @@ Examples: equity quant → 퀀트, data engineer → 데이터 엔지니어, mac
   } catch {
     return text;
   }
+}
+
+async function searchRallit(q: string): Promise<JobResult[]> {
+  try {
+    const url = new URL('https://www.rallit.com/client/api/v1/position');
+    url.searchParams.set('keyword', q);
+    url.searchParams.set('pageNumber', '1');
+    url.searchParams.set('pageSize', String(RALLIT_LIST_PAGE_SIZE));
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return [];
+
+    const data = await res.json() as RallitListResponse;
+    const items = data.data?.items || [];
+    if (!items.length) return [];
+
+    const details = await Promise.allSettled(
+      items.map((item) => fetchRallitDetail(item.id))
+    );
+
+    return items.map((item, index) => {
+      const detail = details[index];
+      return normalizeRallitResult(
+        item,
+        detail?.status === 'fulfilled' ? detail.value : undefined
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function fetchRallitDetail(id: number): Promise<RallitDetail | undefined> {
+  try {
+    const res = await fetch(`https://www.rallit.com/client/api/v1/position/${id}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return undefined;
+
+    const data = await res.json() as RallitDetailResponse;
+    return data.data;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeRallitResult(item: RallitListItem, detail?: RallitDetail): JobResult {
+  return {
+    id: `rallit-${item.id}`,
+    title: detail?.title || item.title || '',
+    company: detail?.companyName || item.companyName || '',
+    location: getRallitLocation(detail, item),
+    source: '랠릿',
+    url: normalizeRallitUrl(detail?.id || item.id, item.url),
+    type: detail?.jobs?.[0]?.name || '-',
+    experience: formatRallitExperience(detail?.jobLevels || item.jobLevels),
+    salary: formatRallitSalary(detail?.minimumSalary, detail?.maximumSalary),
+    deadline: formatRallitDeadline(detail?.endedAt, detail?.status?.name || item.status?.name),
+    description: formatRallitDescription(detail, item),
+  };
+}
+
+function getRallitLocation(detail?: RallitDetail, item?: RallitListItem) {
+  if (detail?.addressMain) {
+    return detail.addressMain;
+  }
+
+  const detailRegion = typeof detail?.addressRegion === 'string'
+    ? detail.addressRegion
+    : detail?.addressRegion?.name || detail?.addressRegion?.code;
+  if (detailRegion) {
+    return RALLIT_REGION_NAMES[detailRegion] || detailRegion;
+  }
+
+  const listRegion = item?.addressRegion;
+  if (listRegion) {
+    return RALLIT_REGION_NAMES[listRegion] || listRegion;
+  }
+
+  return '-';
+}
+
+function formatRallitExperience(jobLevels?: string[]) {
+  const labels = (jobLevels || [])
+    .map((level) => RALLIT_JOB_LEVEL_LABELS[level] || '')
+    .filter(Boolean);
+
+  return labels.length ? labels.join(' / ') : '-';
+}
+
+function formatRallitSalary(minimumSalary?: number | null, maximumSalary?: number | null) {
+  if (typeof minimumSalary === 'number' && typeof maximumSalary === 'number') {
+    return `${Math.round(minimumSalary).toLocaleString()}원 - ${Math.round(maximumSalary).toLocaleString()}원`;
+  }
+
+  return '-';
+}
+
+function formatRallitDeadline(endedAt?: string, statusName?: string) {
+  if (endedAt && endedAt !== RALLIT_OPEN_ENDED_AT) {
+    return endedAt.substring(0, 10);
+  }
+
+  return statusName || '-';
+}
+
+function formatRallitDescription(detail?: RallitDetail, item?: RallitListItem) {
+  const descriptionSource = detail?.responsibilities || detail?.content || detail?.description;
+  if (descriptionSource) {
+    return stripTags(descriptionSource).substring(0, 300);
+  }
+
+  if (item?.jobSkillKeywords?.length) {
+    return item.jobSkillKeywords.join(', ').substring(0, 300);
+  }
+
+  return '';
+}
+
+function normalizeRallitUrl(id?: number, url?: string) {
+  if (url?.startsWith('http')) {
+    return url;
+  }
+
+  if (url?.startsWith('/')) {
+    return `https://www.rallit.com${url}`;
+  }
+
+  if (id) {
+    return `https://www.rallit.com/positions/${id}`;
+  }
+
+  return 'https://www.rallit.com/positions';
 }
 
 async function searchAdzuna(q: string): Promise<JobResult[]> {
@@ -192,7 +453,7 @@ async function searchSaramin(q: string): Promise<JobResult[]> {
       const deadline = deadlineMatch ? stripTags(deadlineMatch[1]) : '-';
 
       results.push({
-        id: `saramin-${idx}`, title, company, location,
+        id: createSaraminId(jobUrl, idx), title, company, location,
         source: '사람인', url: jobUrl, type: jobType,
         experience, salary: '-', deadline, description: '',
       });
@@ -259,10 +520,12 @@ export async function GET(request: NextRequest) {
     koreanQuery = await translateQuery(q, 'ko');
   }
 
-  // Korean sites get Korean query, English sites get English query
-  const [saraminResults, wantedResults, adzunaResults, efcResults] = await Promise.allSettled([
-    searchSaramin(koreanQuery),
-    searchWanted(koreanQuery),
+  // Korean sites use the original English query plus the translated Korean query.
+  // Korean input keeps the existing single-query behavior.
+  const [saraminResults, wantedResults, rallitResults, adzunaResults, efcResults] = await Promise.allSettled([
+    searchKoreanSource(searchSaramin, englishQuery, koreanQuery, isKorean),
+    searchKoreanSource(searchWanted, englishQuery, koreanQuery, isKorean),
+    searchKoreanSource(searchRallit, englishQuery, koreanQuery, isKorean),
     searchAdzuna(englishQuery),
     searchEFinancialCareers(englishQuery),
   ]);
@@ -270,6 +533,7 @@ export async function GET(request: NextRequest) {
   const results = [
     ...(saraminResults.status === 'fulfilled' ? saraminResults.value : []),
     ...(wantedResults.status === 'fulfilled' ? wantedResults.value : []),
+    ...(rallitResults.status === 'fulfilled' ? rallitResults.value : []),
     ...(efcResults.status === 'fulfilled' ? efcResults.value : []),
     ...(adzunaResults.status === 'fulfilled' ? adzunaResults.value : []),
   ];
@@ -282,6 +546,7 @@ export async function GET(request: NextRequest) {
       '전체': results.length,
       '사람인': results.filter(r => r.source === '사람인').length,
       '원티드': results.filter(r => r.source === '원티드').length,
+      '랠릿': results.filter(r => r.source === '랠릿').length,
       'eFinancial': results.filter(r => r.source === 'eFinancial').length,
       'Adzuna': results.filter(r => r.source === 'Adzuna').length,
     },

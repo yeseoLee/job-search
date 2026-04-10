@@ -5,10 +5,10 @@
 ## Features
 
 ### 채용 검색
-- **사람인**, **원티드**, **eFinancialCareers**, **Adzuna** 통합 검색
+- **사람인**, **원티드**, **랠릿**, **eFinancialCareers**, **Adzuna** 통합 검색
 - 한국어 입력 시 자동 영어 번역 → 해외 사이트 동시 검색
-- 영어 입력 시 자동 한국어 번역 → 한국 사이트 동시 검색
-- 소스별 필터 탭 (전체/사람인/원티드/eFinancial/Adzuna)
+- 영어 입력 시 원문 + 자동 한국어 번역 확장 검색 → 한국 사이트 동시 검색
+- 소스별 필터 탭 (전체/사람인/원티드/랠릿/eFinancial/Adzuna)
 - 검색 결과 캐싱 (페이지 이동 후 복귀 시 유지)
 
 ### AI 적합도 분석 (Gemini / OpenAI API / OpenAI Codex)
