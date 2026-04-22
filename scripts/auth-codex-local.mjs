@@ -12,7 +12,7 @@ const OPENAI_CODEX_TOKEN_URL = 'https://auth.openai.com/oauth/token';
 const OPENAI_CODEX_SCOPE = 'openid profile email offline_access';
 const DEFAULT_OPENAI_CODEX_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 const DEFAULT_OPENAI_CODEX_REDIRECT_URI = 'http://localhost:1455/auth/callback';
-const DEFAULT_OPENAI_CODEX_APP_ORIGIN = 'http://localhost:3001';
+const DEFAULT_OPENAI_CODEX_APP_ORIGIN = 'http://localhost:3002';
 const SETTINGS_KEYS = {
   accessToken: 'OPENAI_CODEX_ACCESS_TOKEN',
   refreshToken: 'OPENAI_CODEX_REFRESH_TOKEN',

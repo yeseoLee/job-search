@@ -101,7 +101,7 @@ GEMINI_API_KEY=your-gemini-api-key
 # 아래 값은 실험적 OAuth 통합을 위한 선택적 override 입니다.
 # OPENAI_CODEX_CLIENT_ID=app_EMoamEEZ73f0CkXaXp7hrann
 # OPENAI_CODEX_REDIRECT_URI=http://localhost:1455/auth/callback
-# OPENAI_CODEX_APP_ORIGIN=http://localhost:3001
+# OPENAI_CODEX_APP_ORIGIN=http://localhost:3002
 # Docker Compose는 OPENAI_CODEX_AUTH_MODE=local-host 를 자동 설정합니다.
 
 # 채용 검색 (선택사항)
@@ -126,7 +126,7 @@ docker compose up --build
 
 브라우저:
 
-- 앱: http://localhost:3001
+- 앱: http://localhost:3002
 
 OpenAI Codex를 쓰려면 Docker 실행과 별개로 호스트 터미널에서 한 번 인증합니다.
 

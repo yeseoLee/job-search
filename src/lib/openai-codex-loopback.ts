@@ -16,7 +16,7 @@ const LOOPBACK_SERVER_HEADER = 'x-openai-codex-loopback';
 const LOOPBACK_SERVER_VALUE = 'job-search';
 
 let loopbackReadyPromise: Promise<void> | null = null;
-let lastKnownAppOrigin = 'http://localhost:3001';
+let lastKnownAppOrigin = 'http://localhost:3002';
 
 export async function ensureOpenAICodexLoopbackServer(redirectUri: string, appOrigin: string) {
   if (!isOpenAICodexLoopbackRedirectUri(redirectUri)) {

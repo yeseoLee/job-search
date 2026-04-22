@@ -31,7 +31,7 @@ JSON 형식으로 반환:
 
     for (const keyword of keywords) {
       try {
-        const searchUrl = new URL('http://localhost:3001/api/search');
+        const searchUrl = new URL('http://localhost:3002/api/search');
         searchUrl.searchParams.set('q', keyword);
         const res = await fetch(searchUrl.toString());
         const data = await res.json();
