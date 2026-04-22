@@ -23,7 +23,7 @@ FROM node:24-bookworm-slim AS runner
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3001
+ENV PORT=3002
 ENV HOSTNAME=0.0.0.0
 
 WORKDIR /app
@@ -34,7 +34,7 @@ COPY --from=builder /app/.next/static ./.next/static
 
 RUN mkdir -p data public/uploads
 
-EXPOSE 3001
+EXPOSE 3002
 EXPOSE 1455
 
 CMD ["node", "server.js"]

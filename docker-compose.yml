@@ -10,7 +10,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       OPENAI_CODEX_AUTH_MODE: local-host
     ports:
-      - "3001:3001"
+      - "3002:3002"
     volumes:
       - .:/app
       - job_search_node_modules:/app/node_modules
